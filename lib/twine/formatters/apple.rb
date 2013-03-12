@@ -48,14 +48,19 @@ module Twine
         File.open(path, mode) do |f|
           last_comment = nil
           while line = (sep) ? f.gets(sep) : f.gets
-            if encoding.index('UTF-16')
-              if line.respond_to? :encode!
+            if encoding.index('UTF-16')  
+              if line.respond_to? :encode! 
                 line.encode!('UTF-8')
-              else
-                require 'iconv'
+              else 
+                require 'iconv' 
                 line = Iconv.iconv('UTF-8', encoding, line).join
               end
             end
+
+            #the following 2 lines fix the turkish consuming error 
+            line.encode!('UTF-16', 'UTF-8', :invalid => :replace, :replace => '')
+            line.encode!('UTF-8', 'UTF-16') 
+            
             match = /"((?:[^"\\]|\\.)+)"\s*=\s*"((?:[^"\\]|\\.)*)"/.match(line)
             if match
               key = match[1]

@@ -249,7 +249,7 @@ module Twine
 
         all_keys.each do |keyword|   
           words = translation_keys.select { |item| item[keyword] } 
-
+          
           if words.count > 0
 
             hashy = words.first[keyword] 
