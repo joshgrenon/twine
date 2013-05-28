@@ -1,7 +1,7 @@
 require 'tmpdir'
 
 module Twine
-  VALID_COMMANDS = ['generate-string-file', 'generate-all-string-files', 'consume-string-file', 'consume-all-string-files', 'generate-loc-drop', 'consume-loc-drop', 'generate-report']
+  VALID_COMMANDS = ['generate-string-file', 'generate-all-string-files', 'consume-string-file', 'consume-all-string-files', 'generate-loc-drop', 'consume-loc-drop', 'generate-report', 'generate-untranslated']
 
   class Runner
     def initialize(args)
@@ -48,6 +48,8 @@ module Twine
         consume_loc_drop
       when 'generate-report'
         generate_report
+      when 'generate-untranslated'
+        generate_untranslated
       end
     end
 
@@ -297,6 +299,94 @@ module Twine
           puts key
         end
       end
+
+    end
+
+    def generate_untranslated
+
+      total_strings = 0
+      strings_per_lang = {}
+      all_keys = Set.new
+      translation_keys = Set.new
+      duplicate_keys = Set.new
+      keys_without_tags = Set.new
+      @strings.language_codes.each do |code|
+        strings_per_lang[code] = 0
+      end
+
+      @strings.sections.each do |section|
+        section.rows.each do |row|
+          total_strings += 1
+
+          if all_keys.include? row.key
+            duplicate_keys.add(row.key)
+          else
+            all_keys.add(row.key)
+          end
+
+          row.translations.each_key do |code|
+            strings_per_lang[code] += 1
+          end
+
+          hash = {row.key => row.translations}
+
+          translation_keys.add(hash)
+
+          if row.tags == nil || row.tags.length == 0
+            keys_without_tags.add(row.key)
+          end
+        end
+      end
+
+      missing_words = Set.new
+      missing_keys = Set.new
+      missing_data = Hash.new
+
+      @strings.language_codes.each do |code|
+
+        all_keys.each do |keyword|
+          words = translation_keys.select { |item| item[keyword] }
+
+          if words.count > 0
+            hashy = words.first[keyword]
+            if !hashy[code]
+              missing_data.store(keyword,hashy["en"])
+              missing_keys.add(keyword)
+              missing_words.add(hashy["en"]) #change default "en" to base lang
+            end
+          end
+        end
+      end
+
+      untranslated_strings_output = ""
+      missing_data.keys.each_with_index do |key, index|
+
+        if index==0
+          untranslated_strings_output << "[" + key + "]"
+        else
+          untranslated_strings_output << "\n" + "[" + key + "]"
+        end
+
+          @strings.language_codes.each do |code|
+
+              all_keys.each do |keyword|
+
+                if key==keyword #if current code keys dont match the set
+                    if code == "en"
+                      untranslated_strings_output << "\n\t" + code + " = " + missing_data[key]
+                    else
+                      untranslated_strings_output << "\n\t" + code + " = "
+                    end
+                end
+              end
+          end
+      end
+
+      outFile = File.new("untranslated_strings.txt", "w")
+      outFile.puts(untranslated_strings_output)
+      outFile.close
+
+      puts "The untranslated strings file is ready to be deliver to the translators of Westeros!"
 
     end
 
